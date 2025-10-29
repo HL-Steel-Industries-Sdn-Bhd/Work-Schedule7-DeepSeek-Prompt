@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目排班表</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --background-color: #f5f7fa;
+            --light-gray: #e9ecef;
+            --border-color: #dee2e6;
+            --text-color: #333;
+            --rest-color: #f8d7da;
+            --highlight-color: rgba(52, 152, 219, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2.2rem;
+        }
+
+        .current-date {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .projects-panel {
+            width: 250px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+        }
+
+        .projects-panel h2 {
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            color: var(--primary-color);
+        }
+
+        .project-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .project-item {
+            padding: 12px;
+            border-radius: 6px;
+            cursor: grab;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .project-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-item:active {
+            cursor: grabbing;
+        }
+
+        .schedule-board {
+            flex: 1;
+            overflow-x: auto;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: 120px repeat(16, 1fr);
+            grid-auto-rows: 60px;
+            gap: 1px;
+            background-color: var(--border-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .grid-header {
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            padding: 5px;
+        }
+
+        .grid-cell {
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .grid-cell:hover {
+            background-color: var(--light-gray);
+        }
+
+        .grid-cell.selected {
+            background-color: var(--highlight-color);
+            border: 2px dashed var(--primary-color);
+        }
+
+        .grid-cell.rest {
+            background-color: var(--rest-color);
+            font-style: italic;
+            color: #721c24;
+        }
+
+        .employee-name {
+            background-color: var(--light-gray);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+        }
+
+        .assigned-project {
+            position: absolute;
+            top: 2px;
+            bottom: 2px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            z-index: 10;
+            overflow: hidden;
+            word-break: break-word;
+        }
+
+        .assigned-project:hover {
+            filter: brightness(0.95);
+        }
+
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: var(--light-gray);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .instructions h3 {
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }
+
+        .instructions ul {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>项目排班表</h1>
+        <div class="current-date" id="current-date">日期：</div>
+    </div>
+
+    <div class="container">
+        <div class="projects-panel">
+            <h2>项目列表</h2>
+            <div class="project-list" id="project-list">
+                <!-- 项目列表将通过JS动态生成 -->
+            </div>
+        </div>
+
+        <div class="schedule-board">
+            <div class="schedule-grid" id="schedule-grid">
+                <!-- 排班表将通过JS动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h3>使用说明</h3>
+        <ul>
+            <li>点击右侧排班表中的时间格子选中它</li>
+            <li>从左侧项目列表拖拽项目到选中的格子</li>
+            <li>拖拽到多个连续格子时会自动合并显示</li>
+            <li>点击已分配的项目块可删除</li>
+            <li>休息时段无法分配任务</li>
+        </ul>
+    </div>
+
+    <script>
+        // 时间点定义
+        const timeSlots = [
+            '8:30', '9:30', '10:30', '11:30', '12:00', 
+            '1:00', '2:00', '3:00', '4:00', '5:00', 
+            '5:30', '6:00', '7:00', '8:00', '9:00', '10:00'
+        ];
+
+        // 员工列表
+        const employees = [
+            'Albert', 'Aung Thant', 'Azim', 'William', 'Myo', 
+            'Wai Phyo', 'Luna', 'Terrence', 'Yu Jun', 'Bunyao', 'Matthew'
+        ];
+
+        // 项目数据
+        const projects = [
+            { id: 1, name: 'Website Redesign', so: 'SO-004587' },
+            { id: 2, name: 'Mobile App Development', so: 'SO-004588' },
+            { id: 3, name: 'Database Migration', so: 'SO-004589' },
+            { id: 4, name: 'UI/UX Research', so: 'SO-004590' },
+            { id: 5, name: 'API Integration', so: 'SO-004591' },
+            { id: 6, name: 'Security Audit', so: 'SO-004592' },
+            { id: 7, name: 'Performance Optimization', so: 'SO-004593' },
+            { id: 8, name: 'Content Management', so: 'SO-004594' }
+        ];
+
+        // 休息时段
+        const restSlots = [4, 10]; // 12:00 和 5:30 为休息时间
+
+        // 颜色映射 - 为每个SO分配一种柔和的颜色
+        const soColors = {
+            'SO-004587': '#d4edda',
+            'SO-004588': '#cce7ff',
+            'SO-004589': '#fff3cd',
+            'SO-004590': '#f8d7da',
+            'SO-004591': '#e2e3e5',
+            'SO-004592': '#d1ecf1',
+            'SO-004593': '#e9ecef',
+            'SO-004594': '#d6d8db'
+        };
+
+        // 全局变量
+        let selectedCell = null;
+        let currentDragProject = null;
+
+        // 初始化函数
+        function init() {
+            displayCurrentDate();
+            renderProjectList();
+            renderScheduleGrid();
+            setupEventListeners();
+        }
+
+        // 显示当前日期
+        function displayCurrentDate() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            document.getElementById('current-date').textContent = `日期：${year}/${month}/${day}`;
+        }
+
+        // 渲染项目列表
+        function renderProjectList() {
+            const projectList = document.getElementById('project-list');
+            projectList.innerHTML = '';
+            
+            projects.forEach(project => {
+                const projectItem = document.createElement('div');
+                projectItem.className = 'project-item';
+                projectItem.textContent = project.name;
+                projectItem.dataset.projectId = project.id;
+                projectItem.dataset.so = project.so;
+                projectItem.style.backgroundColor = soColors[project.so];
+                projectItem.draggable = true;
+                
+                projectList.appendChild(projectItem);
+            });
+        }
+
+        // 渲染排班表
+        function renderScheduleGrid() {
+            const scheduleGrid = document.getElementById('schedule-grid');
+            scheduleGrid.innerHTML = '';
+            
+            // 添加表头 - 空单元格和时间点
+            scheduleGrid.appendChild(createGridHeader('')); // 左上角空单元格
+            
+            // 添加时间点表头
+            timeSlots.forEach((time, index) => {
+                const headerCell = createGridHeader(time);
+                if (restSlots.includes(index)) {
+                    headerCell.classList.add('rest');
+                }
+                scheduleGrid.appendChild(headerCell);
+            });
+            
+            // 添加员工行
+            employees.forEach(employee => {
+                // 员工姓名单元格
+                const employeeCell = document.createElement('div');
+                employeeCell.className = 'employee-name';
+                employeeCell.textContent = employee;
+                scheduleGrid.appendChild(employeeCell);
+                
+                // 员工的时间格子
+                for (let i = 0; i < timeSlots.length; i++) {
+                    const timeCell = document.createElement('div');
+                    timeCell.className = 'grid-cell';
+                    timeCell.dataset.employee = employee;
+                    timeCell.dataset.timeIndex = i;
+                    
+                    if (restSlots.includes(i)) {
+                        timeCell.classList.add('rest');
+                        timeCell.textContent = '休息';
+                    }
+                    
+                    scheduleGrid.appendChild(timeCell);
+                }
+            });
+        }
+
+        // 创建表头单元格
+        function createGridHeader(text) {
+            const headerCell = document.createElement('div');
+            headerCell.className = 'grid-header';
+            headerCell.textContent = text;
+            return headerCell;
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 项目拖拽事件
+            document.querySelectorAll('.project-item').forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+            });
+            
+            // 排班表单元格点击事件
+            document.getElementById('schedule-grid').addEventListener('click', handleCellClick);
+            
+            // 排班表单元格拖放事件
+            document.getElementById('schedule-grid').addEventListener('dragover', handleDragOver);
+            document.getElementById('schedule-grid').addEventListener('drop', handleDrop);
+            
+            // 防止默认拖放行为
+            document.addEventListener('dragover', e => e.preventDefault());
+            document.addEventListener('drop', e => e.preventDefault());
+        }
+
+        // 处理拖拽开始
+        function handleDragStart(e) {
+            currentDragProject = {
+                id: parseInt(e.target.dataset.projectId),
+                name: e.target.textContent,
+                so: e.target.dataset.so
+            };
+            
+            // 创建自定义拖拽图像
+            const dragImage = document.createElement('div');
+            dragImage.textContent = e.target.textContent;
+            dragImage.style.backgroundColor = soColors[e.target.dataset.so];
+            dragImage.style.padding = '5px 10px';
+            dragImage.style.borderRadius = '4px';
+            dragImage.style.opacity = '0.8';
+            dragImage.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+            dragImage.style.transform = 'scale(0.8)';
+            document.body.appendChild(dragImage);
+            
+            e.dataTransfer.setDragImage(dragImage, 0, 0);
+            
+            // 延迟移除拖拽图像
+            setTimeout(() => {
+                document.body.removeChild(dragImage);
+            }, 0);
+        }
+
+        // 处理单元格点击
+        function handleCellClick(e) {
+            const cell = e.target;
+            
+            // 如果点击的是已分配的项目，则删除它
+            if (cell.classList.contains('assigned-project')) {
+                cell.remove();
+                return;
+            }
+            
+            // 如果点击的是休息时段，则不处理
+            if (cell.classList.contains('rest')) {
+                return;
+            }
+            
+            // 如果点击的是普通单元格
+            if (cell.classList.contains('grid-cell')) {
+                // 清除之前的选择
+                if (selectedCell) {
+                    selectedCell.classList.remove('selected');
+                }
+                
+                // 设置新的选择
+                cell.classList.add('selected');
+                selectedCell = cell;
+            }
+        }
+
+        // 处理拖拽经过
+        function handleDragOver(e) {
+            e.preventDefault();
+            
+            // 高亮显示可放置区域
+            if (e.target.classList.contains('grid-cell') && 
+                !e.target.classList.contains('rest') && 
+                !e.target.classList.contains('assigned-project')) {
+                e.target.style.backgroundColor = 'var(--highlight-color)';
+            }
+        }
+
+        // 处理放置
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            // 重置所有单元格的背景色
+            document.querySelectorAll('.grid-cell').forEach(cell => {
+                cell.style.backgroundColor = '';
+            });
+            
+            // 如果没有选中单元格或没有拖拽项目，则返回
+            if (!selectedCell || !currentDragProject) {
+                return;
+            }
+            
+            // 获取选中的单元格信息
+            const employee = selectedCell.dataset.employee;
+            const timeIndex = parseInt(selectedCell.dataset.timeIndex);
+            
+            // 检查是否在休息时段
+            if (restSlots.includes(timeIndex)) {
+                return;
+            }
+            
+            // 创建项目分配
+            createProjectAssignment(employee, timeIndex, currentDragProject);
+            
+            // 重置选择
+            selectedCell.classList.remove('selected');
+            selectedCell = null;
+            currentDragProject = null;
+        }
+
+        // 创建项目分配
+        function createProjectAssignment(employee, startTimeIndex, project) {
+            // 计算连续可用的格子数量（最多到休息时段或末尾）
+            let span = 1;
+            for (let i = startTimeIndex + 1; i < timeSlots.length; i++) {
+                // 如果遇到休息时段或已有分配，则停止
+                if (restSlots.includes(i) || isCellOccupied(employee, i)) {
+                    break;
+                }
+                span++;
+            }
+            
+            // 创建项目分配元素
+            const assignment = document.createElement('div');
+            assignment.className = 'assigned-project';
+            assignment.textContent = project.name;
+            assignment.style.backgroundColor = soColors[project.so];
+            
+            // 根据格子数量设置字体大小
+            const fontSize = getFontSizeBySpan(span);
+            assignment.style.fontSize = fontSize + 'px';
+            
+            // 设置位置和大小
+            const cellWidth = 100 / timeSlots.length;
+            assignment.style.left = `calc(${startTimeIndex * cellWidth}% + ${startTimeIndex}px)`;
+            assignment.style.width = `calc(${span * cellWidth}% + ${span - 1}px)`;
+            
+            // 添加到对应的员工行
+            const employeeCells = document.querySelectorAll(`.grid-cell[data-employee="${employee}"]`);
+            const parentCell = employeeCells[startTimeIndex];
+            parentCell.appendChild(assignment);
+        }
+
+        // 检查单元格是否已被占用
+        function isCellOccupied(employee, timeIndex) {
+            const employeeCells = document.querySelectorAll(`.grid-cell[data-employee="${employee}"]`);
+            const cell = employeeCells[timeIndex];
+            return cell.querySelector('.assigned-project') !== null;
+        }
+
+        // 根据格子数量获取字体大小
+        function getFontSizeBySpan(span) {
+            switch(span) {
+                case 1: return 12;
+                case 2: return 16;
+                case 3: return 18;
+                case 4: return 22;
+                default: return 26;
+            }
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
